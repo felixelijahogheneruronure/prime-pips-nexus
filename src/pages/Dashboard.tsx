@@ -64,8 +64,8 @@ const Dashboard = () => {
                 <div className="text-2xl font-bold">{stat.value}</div>
                 <p className={`text-xs ${
                   stat.changeType === 'positive' ? 'text-success' : 
-                  stat.changeType === 'negative' ? 'text-destructive' : 
-                  'text-muted-foreground'
+                  stat.changeType === 'neutral' ? 'text-muted-foreground' : 
+                  'text-destructive'
                 }`}>
                   {stat.change} from last month
                 </p>
