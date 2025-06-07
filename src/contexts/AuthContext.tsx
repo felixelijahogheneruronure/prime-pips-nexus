@@ -62,44 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Check for demo admin credentials
-      if (email === 'admin@primepips.com' && password === 'admin123') {
-        const adminUser: User = {
-          id: 'admin-001',
-          email: 'admin@primepips.com',
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'admin',
-          tier: 12,
-          status: 'active',
-          wallets: { USDC: 10000, BTC: 1, ETH: 10 },
-          createdAt: new Date().toISOString()
-        };
-        setUser(adminUser);
-        localStorage.setItem('primePipsUser', JSON.stringify(adminUser));
-        setIsLoading(false);
-        return true;
-      }
-
-      // Check for demo user credentials
-      if (email === 'demo@primepips.com' && password === 'demo123') {
-        const demoUser: User = {
-          id: 'user-001',
-          email: 'demo@primepips.com',
-          firstName: 'Demo',
-          lastName: 'User',
-          role: 'user',
-          tier: 1,
-          status: 'active',
-          wallets: { USDC: 100, BTC: 0, ETH: 0 },
-          createdAt: new Date().toISOString()
-        };
-        setUser(demoUser);
-        localStorage.setItem('primePipsUser', JSON.stringify(demoUser));
-        setIsLoading(false);
-        return true;
-      }
-
       // Fetch users from JSONBin
       const users = await fetchUsers();
       const foundUser = users.find((u: any) => u.email === email);

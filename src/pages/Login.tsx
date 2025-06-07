@@ -30,7 +30,7 @@ const Login = () => {
     } else {
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Try demo@primepips.com / demo123",
+        description: "Invalid email or password.",
         variant: "destructive",
       });
     }
@@ -93,14 +93,6 @@ const Login = () => {
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
-
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-center text-muted-foreground mb-2">Demo Accounts:</p>
-              <div className="text-xs space-y-1">
-                <p><strong>User:</strong> demo@primepips.com / demo123</p>
-                <p><strong>Admin:</strong> admin@primepips.com / admin123</p>
-              </div>
-            </div>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
