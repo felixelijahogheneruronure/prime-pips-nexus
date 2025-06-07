@@ -62,8 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Fetch users from JSONBin
+      console.log('Attempting login for:', email);
+      
+      // Fetch users from the specific JSONBin
       const users = await fetchUsers();
+      console.log('Fetched users:', users);
+      
       const foundUser = users.find((u: any) => u.email === email);
 
       if (foundUser && verifyPassword(password, foundUser.passwordHash)) {
@@ -71,9 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userWithoutPassword);
         localStorage.setItem('primePipsUser', JSON.stringify(userWithoutPassword));
         setIsLoading(false);
+        console.log('Login successful for:', email);
         return true;
       }
 
+      console.log('Login failed for:', email);
       setIsLoading(false);
       return false;
     } catch (error) {
@@ -87,11 +93,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Fetch existing users
+      console.log('Attempting registration for:', email);
+      
+      // Fetch existing users from the specific JSONBin
       const users = await fetchUsers();
+      console.log('Existing users:', users);
       
       // Check if user already exists
       if (users.find((u: any) => u.email === email)) {
+        console.log('User already exists:', email);
         setIsLoading(false);
         return false;
       }
@@ -110,9 +120,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         passwordHash: hashPassword(password)
       };
 
-      // Update users array
+      // Update users array in the specific JSONBin
       const updatedUsers = [...users, newUser];
       await updateUsers(updatedUsers);
+      console.log('User registered successfully:', email);
 
       // Set user (without password hash)
       const { passwordHash, ...userWithoutPassword } = newUser;

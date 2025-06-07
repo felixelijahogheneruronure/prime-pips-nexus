@@ -2,6 +2,9 @@
 const ACCESS_KEY = '$2a$10$UeoblVtgeyOlWM3v92XVFOyCGfveGbYO7iPE73py3KJGwL.A0FKv2';
 const BASE_URL = 'https://api.jsonbin.io/v3';
 
+// Use the specific bin ID provided by the user for users
+const USERS_BIN_ID = '684483768960c979a5a6640c';
+
 // Store bin IDs in localStorage for persistence
 const BIN_STORAGE_KEY = 'prime_pips_bin_ids';
 
@@ -73,29 +76,23 @@ export const updateBinData = async (binId: string, data: any): Promise<boolean> 
   return true;
 };
 
-// User-specific API functions
+// User-specific API functions - now using the specific bin ID
 export const getUsersBin = async (): Promise<string> => {
-  const binIds = getBinIds();
-  
-  if (binIds.users) {
-    return binIds.users;
-  }
-
-  // Create new users bin if it doesn't exist
-  const binId = await createBin({ users: [] });
-  setBinId('users', binId);
-  return binId;
+  return USERS_BIN_ID;
 };
 
 export const fetchUsers = async (): Promise<any[]> => {
-  const binId = await getUsersBin();
-  const data = await fetchBinData(binId);
-  return data.users || [];
+  try {
+    const data = await fetchBinData(USERS_BIN_ID);
+    return data.users || [];
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return [];
+  }
 };
 
 export const updateUsers = async (users: any[]): Promise<boolean> => {
-  const binId = await getUsersBin();
-  return await updateBinData(binId, { users });
+  return await updateBinData(USERS_BIN_ID, { users });
 };
 
 // Agent Application API functions
