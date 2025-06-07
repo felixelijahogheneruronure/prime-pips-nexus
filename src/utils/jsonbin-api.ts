@@ -7,7 +7,8 @@ const BIN_STORAGE_KEY = 'prime_pips_bin_ids';
 
 interface BinIds {
   users?: string;
-  transactions?: string;
+  agentApplications?: string;
+  accountDetails?: string;
   notifications?: string;
 }
 
@@ -97,9 +98,80 @@ export const updateUsers = async (users: any[]): Promise<boolean> => {
   return await updateBinData(binId, { users });
 };
 
+// Agent Application API functions
+export const getAgentApplicationsBin = async (): Promise<string> => {
+  const binIds = getBinIds();
+  
+  if (binIds.agentApplications) {
+    return binIds.agentApplications;
+  }
+
+  const binId = await createBin({ applications: [] });
+  setBinId('agentApplications', binId);
+  return binId;
+};
+
+export const fetchAgentApplications = async (): Promise<any[]> => {
+  const binId = await getAgentApplicationsBin();
+  const data = await fetchBinData(binId);
+  return data.applications || [];
+};
+
+export const updateAgentApplications = async (applications: any[]): Promise<boolean> => {
+  const binId = await getAgentApplicationsBin();
+  return await updateBinData(binId, { applications });
+};
+
+// Account Details API functions
+export const getAccountDetailsBin = async (): Promise<string> => {
+  const binIds = getBinIds();
+  
+  if (binIds.accountDetails) {
+    return binIds.accountDetails;
+  }
+
+  const binId = await createBin({ accountDetails: [] });
+  setBinId('accountDetails', binId);
+  return binId;
+};
+
+export const fetchAccountDetails = async (): Promise<any[]> => {
+  const binId = await getAccountDetailsBin();
+  const data = await fetchBinData(binId);
+  return data.accountDetails || [];
+};
+
+export const updateAccountDetails = async (accountDetails: any[]): Promise<boolean> => {
+  const binId = await getAccountDetailsBin();
+  return await updateBinData(binId, { accountDetails });
+};
+
+// Notifications API functions
+export const getNotificationsBin = async (): Promise<string> => {
+  const binIds = getBinIds();
+  
+  if (binIds.notifications) {
+    return binIds.notifications;
+  }
+
+  const binId = await createBin({ notifications: [] });
+  setBinId('notifications', binId);
+  return binId;
+};
+
+export const fetchNotifications = async (): Promise<any[]> => {
+  const binId = await getNotificationsBin();
+  const data = await fetchBinData(binId);
+  return data.notifications || [];
+};
+
+export const updateNotifications = async (notifications: any[]): Promise<boolean> => {
+  const binId = await getNotificationsBin();
+  return await updateBinData(binId, { notifications });
+};
+
 // Simple password hashing (for demo purposes)
 export const hashPassword = (password: string): string => {
-  // In production, use a proper hashing library like bcrypt
   return btoa(password + 'prime_pips_salt');
 };
 

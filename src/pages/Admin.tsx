@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, DollarSign, TrendingUp, AlertTriangle, Plus, Edit, Trash2, Ban, UserCheck } from "lucide-react";
+import { Users, DollarSign, TrendingUp, AlertTriangle, Plus, Edit, Trash2, Ban, UserCheck, Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { fetchUsers, updateUsers } from "@/utils/jsonbin-api";
@@ -50,8 +50,9 @@ const Admin = () => {
         firstName: userData.firstName,
         lastName: userData.lastName,
         role: userData.role,
+        tier: parseInt(userData.tier),
         status: 'active',
-        wallets: { USDC: 100, BTC: 0, ETH: 0 },
+        wallets: { USDC: parseFloat(userData.usdcBalance) || 100, BTC: 0, ETH: 0 },
         createdAt: new Date().toISOString(),
         passwordHash: 'demo-hash'
       };
@@ -77,7 +78,15 @@ const Admin = () => {
   const handleUpdateUser = async (userData: any) => {
     try {
       const updatedUsers = users.map(u => 
-        u.id === selectedUser.id ? { ...u, ...userData } : u
+        u.id === selectedUser.id ? { 
+          ...u, 
+          ...userData, 
+          tier: parseInt(userData.tier),
+          wallets: {
+            ...u.wallets,
+            USDC: parseFloat(userData.usdcBalance)
+          }
+        } : u
       );
       await updateUsers(updatedUsers);
       setUsers(updatedUsers);
@@ -135,6 +144,30 @@ const Admin = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const getTierBadge = (tier: number) => {
+    const tierColors = {
+      1: 'bg-gray-500',
+      2: 'bg-green-500',
+      3: 'bg-blue-500',
+      4: 'bg-purple-500',
+      5: 'bg-pink-500',
+      6: 'bg-indigo-500',
+      7: 'bg-yellow-500',
+      8: 'bg-orange-500',
+      9: 'bg-red-500',
+      10: 'bg-emerald-500',
+      11: 'bg-cyan-500',
+      12: 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500'
+    };
+    
+    return (
+      <Badge className={`${tierColors[tier as keyof typeof tierColors] || 'bg-gray-500'} text-white`}>
+        <Crown className="w-3 h-3 mr-1" />
+        Tier {tier}
+      </Badge>
+    );
   };
 
   if (user?.role !== 'admin') {
@@ -231,6 +264,7 @@ const Admin = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Tier</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>USDC Balance</TableHead>
                     <TableHead>Actions</TableHead>
@@ -246,6 +280,7 @@ const Admin = () => {
                           {user.role}
                         </Badge>
                       </TableCell>
+                      <TableCell>{getTierBadge(user.tier || 1)}</TableCell>
                       <TableCell>
                         <Badge variant={
                           user.status === 'active' ? 'default' : 
@@ -327,20 +362,14 @@ const UserForm = ({ initialData, onSubmit, isEdit = false }: any) => {
     lastName: initialData?.lastName || '',
     email: initialData?.email || '',
     role: initialData?.role || 'user',
+    tier: initialData?.tier || 1,
     status: initialData?.status || 'active',
     usdcBalance: initialData?.wallets?.USDC || 100
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const userData = isEdit ? {
-      ...formData,
-      wallets: {
-        ...initialData.wallets,
-        USDC: parseFloat(formData.usdcBalance.toString())
-      }
-    } : formData;
-    onSubmit(userData);
+    onSubmit(formData);
   };
 
   return (
@@ -391,22 +420,38 @@ const UserForm = ({ initialData, onSubmit, isEdit = false }: any) => {
           </Select>
         </div>
         
-        {isEdit && (
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="banned">Banned</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <div>
+          <Label htmlFor="tier">Tier Level</Label>
+          <Select value={formData.tier.toString()} onValueChange={(value) => setFormData({...formData, tier: parseInt(value)})}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({length: 12}, (_, i) => i + 1).map(tier => (
+                <SelectItem key={tier} value={tier.toString()}>
+                  Tier {tier}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {isEdit && (
+        <div>
+          <Label htmlFor="status">Status</Label>
+          <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="banned">Banned</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="usdcBalance">USDC Balance</Label>

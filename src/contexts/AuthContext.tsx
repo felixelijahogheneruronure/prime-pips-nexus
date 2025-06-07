@@ -8,6 +8,8 @@ interface User {
   firstName: string;
   lastName: string;
   role: 'user' | 'admin';
+  tier: number;
+  status: 'active' | 'suspended' | 'banned';
   wallets: {
     USDC: number;
     BTC: number;
@@ -22,6 +24,7 @@ interface AuthContextType {
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  updateUserData: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,11 +50,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  const updateUserData = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('primePipsUser', JSON.stringify(updatedUser));
+    }
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // Check for demo admin credentials (bypass JSONBin for demo)
+      // Check for demo admin credentials
       if (email === 'admin@primepips.com' && password === 'admin123') {
         const adminUser: User = {
           id: 'admin-001',
@@ -59,6 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           firstName: 'Admin',
           lastName: 'User',
           role: 'admin',
+          tier: 12,
+          status: 'active',
           wallets: { USDC: 10000, BTC: 1, ETH: 10 },
           createdAt: new Date().toISOString()
         };
@@ -68,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
 
-      // Check for demo user credentials (bypass JSONBin for demo)
+      // Check for demo user credentials
       if (email === 'demo@primepips.com' && password === 'demo123') {
         const demoUser: User = {
           id: 'user-001',
@@ -76,6 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           firstName: 'Demo',
           lastName: 'User',
           role: 'user',
+          tier: 1,
+          status: 'active',
           wallets: { USDC: 100, BTC: 0, ETH: 0 },
           createdAt: new Date().toISOString()
         };
@@ -126,6 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         firstName,
         lastName,
         role: 'user' as const,
+        tier: 1,
+        status: 'active' as const,
         wallets: { USDC: 100, BTC: 0, ETH: 0 }, // Welcome bonus
         createdAt: new Date().toISOString(),
         passwordHash: hashPassword(password)
@@ -154,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading, updateUserData }}>
       {children}
     </AuthContext.Provider>
   );

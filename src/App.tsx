@@ -17,6 +17,10 @@ import WithdrawFunds from "./pages/WithdrawFunds";
 import TransferFunds from "./pages/TransferFunds";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
+import BecomeAgent from "./pages/BecomeAgent";
+import OurAgents from "./pages/OurAgents";
+import AccountDetails from "./pages/AccountDetails";
+import NotificationsPage from "./pages/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +45,10 @@ const App = () => (
             <Route path="/transfer" element={<TransferFunds />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/become-agent" element={<BecomeAgent />} />
+            <Route path="/our-agents" element={<OurAgents />} />
+            <Route path="/account-details" element={<AccountDetails />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
