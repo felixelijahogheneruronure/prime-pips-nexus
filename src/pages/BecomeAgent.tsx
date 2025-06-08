@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, Clock, MapPin, CheckCircle, AlertCircle } from "lucide-react";
+import { UserPlus, Clock, MapPin, CheckCircle, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAgentApplications, updateAgentApplications, fetchAccountDetails, updateAccountDetails } from "@/utils/jsonbin-api";
 import { useToast } from "@/hooks/use-toast";
+
+interface BankAccount {
+  id: string;
+  accountNumber: string;
+  bankUserName: string;
+  bankName: string;
+  country: string;
+}
 
 const BecomeAgent = () => {
   const { user } = useAuth();
@@ -32,11 +39,15 @@ const BecomeAgent = () => {
     motivation: ''
   });
 
-  const [accountForm, setAccountForm] = useState({
-    accountNumber: '',
-    bankUserName: '',
-    bankName: ''
-  });
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
+    {
+      id: '1',
+      accountNumber: '',
+      bankUserName: '',
+      bankName: '',
+      country: ''
+    }
+  ]);
 
   useEffect(() => {
     checkApplicationStatus();
@@ -51,7 +62,6 @@ const BecomeAgent = () => {
         setApplicationStatus(userApplication.status);
         
         if (userApplication.status === 'approved') {
-          // Check account details status
           const accountDetails = await fetchAccountDetails();
           const userAccountDetails = accountDetails.find(acc => acc.userId === user?.id);
           
@@ -118,6 +128,21 @@ const BecomeAgent = () => {
 
   const handleAccountDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that at least one bank account is filled
+    const validAccounts = bankAccounts.filter(acc => 
+      acc.accountNumber && acc.bankUserName && acc.bankName && acc.country
+    );
+    
+    if (validAccounts.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please fill in at least one complete bank account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -128,7 +153,7 @@ const BecomeAgent = () => {
         userId: user?.id,
         userEmail: user?.email,
         userName: `${user?.firstName} ${user?.lastName}`,
-        ...accountForm,
+        bankAccounts: validAccounts,
         status: 'pending',
         submittedAt: new Date().toISOString()
       };
@@ -140,15 +165,17 @@ const BecomeAgent = () => {
 
       toast({
         title: "Account Details Submitted",
-        description: "Your account details have been submitted for approval.",
+        description: "Your bank account details have been submitted for approval.",
       });
 
       // Reset form
-      setAccountForm({
+      setBankAccounts([{
+        id: '1',
         accountNumber: '',
         bankUserName: '',
-        bankName: ''
-      });
+        bankName: '',
+        country: ''
+      }]);
     } catch (error) {
       toast({
         title: "Error",
@@ -160,13 +187,39 @@ const BecomeAgent = () => {
     }
   };
 
+  const addBankAccount = () => {
+    const newId = (bankAccounts.length + 1).toString();
+    setBankAccounts([...bankAccounts, {
+      id: newId,
+      accountNumber: '',
+      bankUserName: '',
+      bankName: '',
+      country: ''
+    }]);
+  };
+
+  const removeBankAccount = (id: string) => {
+    if (bankAccounts.length > 1) {
+      setBankAccounts(bankAccounts.filter(acc => acc.id !== id));
+    }
+  };
+
+  const updateBankAccount = (id: string, field: keyof BankAccount, value: string) => {
+    setBankAccounts(bankAccounts.map(acc => 
+      acc.id === id ? { ...acc, [field]: value } : acc
+    ));
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAccountInputChange = (field: string, value: string) => {
-    setAccountForm(prev => ({ ...prev, [field]: value }));
-  };
+  const countries = [
+    'United States', 'Canada', 'United Kingdom', 'Germany', 'France', 'Spain', 'Italy',
+    'Nigeria', 'South Africa', 'Kenya', 'Ghana', 'Egypt', 'Morocco', 'Tanzania',
+    'India', 'China', 'Japan', 'South Korea', 'Thailand', 'Vietnam', 'Singapore',
+    'Australia', 'New Zealand', 'Brazil', 'Argentina', 'Mexico', 'Colombia', 'Chile'
+  ];
 
   const renderApplicationForm = () => (
     <Card>
@@ -273,13 +326,16 @@ const BecomeAgent = () => {
             
             <div className="space-y-2">
               <Label htmlFor="country">Country *</Label>
-              <Input
-                id="country"
-                value={formData.country}
-                onChange={(e) => handleInputChange('country', e.target.value)}
-                placeholder="Your country"
-                required
-              />
+              <Select value={formData.country} onValueChange={(value) => handleInputChange('country', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map(country => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -340,47 +396,100 @@ const BecomeAgent = () => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <CheckCircle className="w-5 h-5 mr-2 text-success" />
-          Post Account Details
+          Post Bank Account Details
         </CardTitle>
-        <p className="text-muted-foreground">Your agent application has been approved! Please provide your account details.</p>
+        <p className="text-muted-foreground">Your agent application has been approved! Please provide your bank account details.</p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleAccountDetailsSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="accountNumber">Account Number/Email *</Label>
-            <Input
-              id="accountNumber"
-              value={accountForm.accountNumber}
-              onChange={(e) => handleAccountInputChange('accountNumber', e.target.value)}
-              placeholder="Phone number or email address"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bankUserName">Bank User Name *</Label>
-            <Input
-              id="bankUserName"
-              value={accountForm.bankUserName}
-              onChange={(e) => handleAccountInputChange('bankUserName', e.target.value)}
-              placeholder="Your name as it appears on the account"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bankName">Bank Name *</Label>
-            <Input
-              id="bankName"
-              value={accountForm.bankName}
-              onChange={(e) => handleAccountInputChange('bankName', e.target.value)}
-              placeholder="Name of your bank"
-              required
-            />
+        <form onSubmit={handleAccountDetailsSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-medium">Bank Accounts</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addBankAccount}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Bank Account
+              </Button>
+            </div>
+            
+            {bankAccounts.map((account, index) => (
+              <Card key={account.id} className="p-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Bank Account #{index + 1}</h4>
+                    {bankAccounts.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeBankAccount(account.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Account Number/Email *</Label>
+                      <Input
+                        value={account.accountNumber}
+                        onChange={(e) => updateBankAccount(account.id, 'accountNumber', e.target.value)}
+                        placeholder="Phone number or email address"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Bank User Name *</Label>
+                      <Input
+                        value={account.bankUserName}
+                        onChange={(e) => updateBankAccount(account.id, 'bankUserName', e.target.value)}
+                        placeholder="Your name as it appears on the account"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Bank Name *</Label>
+                      <Input
+                        value={account.bankName}
+                        onChange={(e) => updateBankAccount(account.id, 'bankName', e.target.value)}
+                        placeholder="Name of your bank"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Country *</Label>
+                      <Select 
+                        value={account.country} 
+                        onValueChange={(value) => updateBankAccount(account.id, 'country', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map(country => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit Account Details"}
+            {isSubmitting ? "Submitting..." : "Submit Bank Account Details"}
           </Button>
         </form>
       </CardContent>
@@ -459,7 +568,7 @@ const BecomeAgent = () => {
               <div className="text-center py-8">
                 <p className="text-lg font-medium text-success">You are now an approved agent!</p>
                 <p className="text-muted-foreground mt-2">
-                  Your account details have been approved and are now available for users to fund their accounts.
+                  Your bank account details have been approved and are now available for users to fund their accounts.
                 </p>
               </div>
             </CardContent>
