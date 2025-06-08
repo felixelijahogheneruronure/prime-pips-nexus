@@ -71,6 +71,31 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   // Select navigation based on user role
   const navigation = user.role === 'admin' ? adminNavigation : userNavigation;
 
+  const getTierBadge = (tier: number) => {
+    const tierConfig = {
+      1: { emoji: '🥉', color: 'bg-gray-500' },
+      2: { emoji: '🥈', color: 'bg-gray-400' },
+      3: { emoji: '🥇', color: 'bg-yellow-500' },
+      4: { emoji: '💎', color: 'bg-blue-500' },
+      5: { emoji: '🔥', color: 'bg-red-500' },
+      6: { emoji: '⚡', color: 'bg-purple-500' },
+      7: { emoji: '🌟', color: 'bg-indigo-500' },
+      8: { emoji: '👑', color: 'bg-pink-500' },
+      9: { emoji: '🚀', color: 'bg-emerald-500' },
+      10: { emoji: '🌌', color: 'bg-cyan-500' },
+      11: { emoji: '🔱', color: 'bg-orange-500' },
+      12: { emoji: '👑', color: 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500' }
+    };
+    
+    const config = tierConfig[tier as keyof typeof tierConfig] || tierConfig[1];
+    
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white ${config.color}`}>
+        {config.emoji} T{tier}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background w-full">
       {/* Mobile sidebar overlay */}
@@ -115,10 +140,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-medium truncate">{user.firstName} {user.lastName}</p>
-                <p className="text-sm text-muted-foreground capitalize flex items-center">
-                  {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
-                  {user.role}
-                </p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <p className="text-sm text-muted-foreground capitalize flex items-center">
+                    {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
+                    {user.role}
+                  </p>
+                  {user.role !== 'admin' && getTierBadge(user.tier || 1)}
+                </div>
               </div>
             </div>
           </div>

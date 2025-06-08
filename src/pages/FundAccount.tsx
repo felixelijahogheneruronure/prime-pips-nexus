@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Wallet, DollarSign, Copy, CheckCircle } from "lucide-react";
+import { CreditCard, Wallet, DollarSign, Copy, CheckCircle, Clock, Mail } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { fetchAccountDetails } from "@/utils/jsonbin-api";
 import { useToast } from "@/hooks/use-toast";
 
 const FundAccount = () => {
@@ -17,6 +18,35 @@ const FundAccount = () => {
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [loading, setLoading] = useState(false);
+  const [approvedAgents, setApprovedAgents] = useState<any[]>([]);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+
+  useEffect(() => {
+    loadApprovedAgents();
+  }, []);
+
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [timeLeft]);
+
+  const loadApprovedAgents = async () => {
+    try {
+      const accountDetails = await fetchAccountDetails();
+      const approved = accountDetails.filter(acc => acc.status === 'approved');
+      setApprovedAgents(approved);
+    } catch (error) {
+      console.error('Error loading approved agents:', error);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -45,7 +75,7 @@ const FundAccount = () => {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied",
-      description: "Address copied to clipboard",
+      description: "Information copied to clipboard",
     });
   };
 
@@ -76,9 +106,10 @@ const FundAccount = () => {
             </CardHeader>
             <CardContent>
               <Tabs value={paymentMethod} onValueChange={setPaymentMethod}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="card">Credit/Debit Card</TabsTrigger>
-                  <TabsTrigger value="crypto">Cryptocurrency</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="card">Credit/Debit</TabsTrigger>
+                  <TabsTrigger value="crypto">Crypto</TabsTrigger>
+                  <TabsTrigger value="agent">Agent Transfer</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="card" className="space-y-4 mt-4">
@@ -169,6 +200,93 @@ const FundAccount = () => {
                       <strong>Important:</strong> Only send the selected cryptocurrency to the corresponding address. 
                       Sending other cryptocurrencies may result in permanent loss.
                     </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="agent" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <Label className="text-lg font-medium">Available Agent Accounts</Label>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        <span>Time remaining: {formatTime(timeLeft)}</span>
+                      </div>
+                    </div>
+                    
+                    {approvedAgents.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>No approved agent accounts available at the moment.</p>
+                        <p className="text-sm mt-2">Please try other payment methods or check back later.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {approvedAgents.map((agent) => (
+                          <Card key={agent.id} className="border-2 border-primary/20">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="font-medium">{agent.bankName}</h4>
+                                    <p className="text-sm text-muted-foreground">{agent.bankUserName}</p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => copyToClipboard(agent.accountNumber)}
+                                  >
+                                    <Copy className="w-3 h-3 mr-1" />
+                                    Copy
+                                  </Button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Account:</span>
+                                    <p className="font-mono font-medium">{agent.accountNumber}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Name:</span>
+                                    <p className="font-medium">{agent.bankUserName}</p>
+                                  </div>
+                                </div>
+                                
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Mail className="w-4 h-4 text-blue-600" />
+                                    <span className="text-sm font-medium">Send Transfer Receipt</span>
+                                  </div>
+                                  <p className="text-xs text-blue-800 dark:text-blue-200">
+                                    After making the transfer, please send a screenshot of your transfer receipt to: 
+                                    <span className="font-mono font-medium"> primepipsexchange@gmail.com</span>
+                                  </p>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="mt-2"
+                                    onClick={() => copyToClipboard('primepipsexchange@gmail.com')}
+                                  >
+                                    <Copy className="w-3 h-3 mr-1" />
+                                    Copy Email
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                            <strong>Important Instructions:</strong>
+                          </p>
+                          <ul className="text-xs text-yellow-800 dark:text-yellow-200 mt-2 space-y-1">
+                            <li>• Transfer the exact amount you want to deposit</li>
+                            <li>• Include your account email in the transfer description</li>
+                            <li>• Send the transfer receipt to primepipsexchange@gmail.com</li>
+                            <li>• Funds will be credited within 24 hours after verification</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>

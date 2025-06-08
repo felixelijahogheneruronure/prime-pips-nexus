@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wallet, TrendingUp, DollarSign, Activity } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Wallet, TrendingUp, DollarSign, Activity, Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
@@ -11,6 +12,31 @@ const Dashboard = () => {
   if (!user) return null;
 
   const totalBalance = user.wallets.USDC + (user.wallets.BTC * 65000) + (user.wallets.ETH * 3200);
+
+  const getTierBadge = (tier: number) => {
+    const tierConfig = {
+      1: { emoji: '🥉', color: 'bg-gray-500', label: 'Bronze' },
+      2: { emoji: '🥈', color: 'bg-gray-400', label: 'Silver' },
+      3: { emoji: '🥇', color: 'bg-yellow-500', label: 'Gold' },
+      4: { emoji: '💎', color: 'bg-blue-500', label: 'Diamond' },
+      5: { emoji: '🔥', color: 'bg-red-500', label: 'Fire' },
+      6: { emoji: '⚡', color: 'bg-purple-500', label: 'Lightning' },
+      7: { emoji: '🌟', color: 'bg-indigo-500', label: 'Star' },
+      8: { emoji: '👑', color: 'bg-pink-500', label: 'Royal' },
+      9: { emoji: '🚀', color: 'bg-emerald-500', label: 'Rocket' },
+      10: { emoji: '🌌', color: 'bg-cyan-500', label: 'Galaxy' },
+      11: { emoji: '🔱', color: 'bg-orange-500', label: 'Trident' },
+      12: { emoji: '👑', color: 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500', label: 'Supreme' }
+    };
+    
+    const config = tierConfig[tier as keyof typeof tierConfig] || tierConfig[1];
+    
+    return (
+      <Badge className={`${config.color} text-white`}>
+        {config.emoji} Tier {tier} - {config.label}
+      </Badge>
+    );
+  };
 
   const stats = [
     {
@@ -46,9 +72,12 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Welcome Section */}
+        {/* Welcome Section with Tier Badge */}
         <div>
-          <h1 className="text-3xl font-bold">Welcome back, {user.firstName}!</h1>
+          <div className="flex items-center space-x-4 mb-2">
+            <h1 className="text-3xl font-bold">Welcome back, {user.firstName}!</h1>
+            {getTierBadge(user.tier || 1)}
+          </div>
           <p className="text-muted-foreground">Here's what's happening with your trading account today.</p>
         </div>
 
