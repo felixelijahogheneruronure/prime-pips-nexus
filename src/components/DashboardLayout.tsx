@@ -13,7 +13,10 @@ import {
   LogOut,
   TrendingUp as Logo,
   Menu,
-  X
+  X,
+  UserPlus,
+  Users,
+  Shield
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,14 +26,29 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
+const userNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Wallets', href: '/wallets', icon: Wallet },
   { name: 'Trading Room', href: '/trading', icon: TrendingUp },
   { name: 'Fund Account', href: '/fund', icon: CreditCard },
   { name: 'Withdraw Funds', href: '/withdraw', icon: ArrowUpCircle },
   { name: 'Transfer Funds', href: '/transfer', icon: ArrowRightLeft },
+  { name: 'Become an Agent', href: '/become-agent', icon: UserPlus },
   { name: 'Messages', href: '/messages', icon: MessageCircle },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+const adminNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'User Management', href: '/admin', icon: Shield },
+  { name: 'Our Agents', href: '/our-agents', icon: Users },
+  { name: 'Account Details', href: '/account-details', icon: CreditCard },
+  { name: 'Notifications', href: '/notifications', icon: MessageCircle },
+  { name: 'Wallets', href: '/wallets', icon: Wallet },
+  { name: 'Trading Room', href: '/trading', icon: TrendingUp },
+  { name: 'Fund Account', href: '/fund', icon: CreditCard },
+  { name: 'Withdraw Funds', href: '/withdraw', icon: ArrowUpCircle },
+  { name: 'Transfer Funds', href: '/transfer', icon: ArrowRightLeft },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -50,8 +68,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     return null;
   }
 
+  // Select navigation based on user role
+  const navigation = user.role === 'admin' ? adminNavigation : userNavigation;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -92,15 +113,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   {user.firstName[0]}{user.lastName[0]}
                 </span>
               </div>
-              <div>
-                <p className="font-medium">{user.firstName} {user.lastName}</p>
-                <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium truncate">{user.firstName} {user.lastName}</p>
+                <p className="text-sm text-muted-foreground capitalize flex items-center">
+                  {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
+                  {user.role}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -108,15 +132,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   key={item.name}
                   to={item.href}
                   className={`
-                    flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors
+                    flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm
                     ${isActive 
                       ? 'bg-primary/10 text-primary' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }
                   `}
+                  onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.name}</span>
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
@@ -137,9 +162,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       </aside>
 
       {/* Main content */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-64 min-h-screen w-full">
         {/* Mobile header */}
-        <header className="lg:hidden bg-card border-b p-4">
+        <header className="lg:hidden bg-card border-b p-4 sticky top-0 z-30">
           <div className="flex items-center justify-between">
             <Button 
               variant="ghost" 
@@ -159,8 +184,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         </header>
 
         {/* Page content */}
-        <main className="p-6">
-          {children}
+        <main className="p-4 sm:p-6 w-full">
+          <div className="max-w-full mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
