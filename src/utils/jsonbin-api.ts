@@ -1,4 +1,3 @@
-
 const ACCESS_KEY = '$2a$10$UeoblVtgeyOlWM3v92XVFOyCGfveGbYO7iPE73py3KJGwL.A0FKv2';
 const BASE_URL = 'https://api.jsonbin.io/v3';
 
@@ -13,6 +12,8 @@ interface BinIds {
   agentApplications?: string;
   accountDetails?: string;
   notifications?: string;
+  trialLimits?: string;
+  userTransactions?: string;
 }
 
 export const getBinIds = (): BinIds => {
@@ -165,6 +166,144 @@ export const fetchNotifications = async (): Promise<any[]> => {
 export const updateNotifications = async (notifications: any[]): Promise<boolean> => {
   const binId = await getNotificationsBin();
   return await updateBinData(binId, { notifications });
+};
+
+// Trial Limits API functions
+export const getTrialLimitsBin = async (): Promise<string> => {
+  const binIds = getBinIds();
+  
+  if (binIds.trialLimits) {
+    return binIds.trialLimits;
+  }
+
+  const defaultLimits = {
+    trial1: { monthlyMin: 100, monthlyMax: 500 },
+    trial2: { monthlyMin: 150, monthlyMax: 1000 },
+    trial3: { monthlyMin: 200, monthlyMax: 1500 },
+    trial4: { monthlyMin: 250, monthlyMax: 2000 },
+    trial5: { monthlyMin: 300, monthlyMax: 2500 },
+    trial6: { monthlyMin: 350, monthlyMax: 3000 },
+    trial7: { monthlyMin: 400, monthlyMax: 3500 },
+    trial8: { monthlyMin: 450, monthlyMax: 4000 },
+    trial9: { monthlyMin: 500, monthlyMax: 4500 },
+    trial10: { monthlyMin: 550, monthlyMax: 5000 },
+    trial11: { monthlyMin: 600, monthlyMax: 6000 },
+    trial12: { monthlyMin: 650, monthlyMax: 7000 }
+  };
+
+  const binId = await createBin({ trialLimits: defaultLimits });
+  setBinId('trialLimits', binId);
+  return binId;
+};
+
+export const fetchTrialLimits = async (): Promise<any> => {
+  try {
+    const binId = await getTrialLimitsBin();
+    const data = await fetchBinData(binId);
+    return data.trialLimits || {};
+  } catch (error) {
+    console.error('Error fetching trial limits:', error);
+    return {};
+  }
+};
+
+export const updateTrialLimits = async (trialLimits: any): Promise<boolean> => {
+  const binId = await getTrialLimitsBin();
+  return await updateBinData(binId, { trialLimits });
+};
+
+// User Transactions API functions
+export const getUserTransactionsBin = async (): Promise<string> => {
+  const binIds = getBinIds();
+  
+  if (binIds.userTransactions) {
+    return binIds.userTransactions;
+  }
+
+  const binId = await createBin({ transactions: [] });
+  setBinId('userTransactions', binId);
+  return binId;
+};
+
+export const fetchUserTransactions = async (userId?: string): Promise<any[]> => {
+  try {
+    const binId = await getUserTransactionsBin();
+    const data = await fetchBinData(binId);
+    const transactions = data.transactions || [];
+    
+    if (userId) {
+      return transactions.filter((t: any) => t.userId === userId);
+    }
+    
+    return transactions;
+  } catch (error) {
+    console.error('Error fetching user transactions:', error);
+    return [];
+  }
+};
+
+export const addUserTransaction = async (transaction: any): Promise<boolean> => {
+  try {
+    const transactions = await fetchUserTransactions();
+    const newTransaction = {
+      id: `txn-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      ...transaction
+    };
+    
+    const updatedTransactions = [...transactions, newTransaction];
+    const binId = await getUserTransactionsBin();
+    return await updateBinData(binId, { transactions: updatedTransactions });
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+    return false;
+  }
+};
+
+// Enhanced user functions with expanded wallet support
+export const updateUserWallet = async (userId: string, walletUpdate: any): Promise<boolean> => {
+  try {
+    const users = await fetchUsers();
+    const updatedUsers = users.map(user => {
+      if (user.id === userId) {
+        return {
+          ...user,
+          wallets: {
+            ...user.wallets,
+            ...walletUpdate
+          }
+        };
+      }
+      return user;
+    });
+    
+    return await updateUsers(updatedUsers);
+  } catch (error) {
+    console.error('Error updating user wallet:', error);
+    return false;
+  }
+};
+
+export const getUserMonthlyDeposits = async (userId: string): Promise<number> => {
+  try {
+    const transactions = await fetchUserTransactions(userId);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const monthlyDeposits = transactions
+      .filter(t => {
+        const transactionDate = new Date(t.timestamp);
+        return t.type === 'deposit' && 
+               transactionDate.getMonth() === currentMonth && 
+               transactionDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    return monthlyDeposits;
+  } catch (error) {
+    console.error('Error calculating monthly deposits:', error);
+    return 0;
+  }
 };
 
 // Simple password hashing (for demo purposes)

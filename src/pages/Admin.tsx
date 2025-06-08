@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, DollarSign, TrendingUp, AlertTriangle, Plus, Edit, Trash2, Ban, UserCheck, Crown, Settings, Bell, Coins } from "lucide-react";
+import { Users, DollarSign, TrendingUp, AlertTriangle, Plus, Edit, Trash2, Ban, UserCheck, Crown, Settings, Bell, Coins, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { fetchUsers, updateUsers, fetchAccountDetails, updateAccountDetails, fetchNotifications, updateNotifications } from "@/utils/jsonbin-api";
+import { fetchUsers, updateUsers, fetchAccountDetails, updateAccountDetails, fetchNotifications, updateNotifications, fetchTrialLimits, updateTrialLimits, updateUserWallet } from "@/utils/jsonbin-api";
 import { useToast } from "@/hooks/use-toast";
 
 const Admin = () => {
@@ -20,6 +20,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
+  const [trialLimits, setTrialLimits] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
@@ -28,6 +29,8 @@ const Admin = () => {
   const [isAgentEditDialogOpen, setIsAgentEditDialogOpen] = useState(false);
   const [isCryptoDialogOpen, setIsCryptoDialogOpen] = useState(false);
   const [isNotificationDialogOpen, setIsNotificationDialogOpen] = useState(false);
+  const [isTrialLimitsDialogOpen, setIsTrialLimitsDialogOpen] = useState(false);
+  const [isWalletEditDialogOpen, setIsWalletEditDialogOpen] = useState(false);
   
   // Crypto addresses state
   const [cryptoAddresses, setCryptoAddresses] = useState({
@@ -52,12 +55,14 @@ const Admin = () => {
 
   const loadData = async () => {
     try {
-      const [usersData, agentsData] = await Promise.all([
+      const [usersData, agentsData, limitsData] = await Promise.all([
         fetchUsers(),
-        fetchAccountDetails()
+        fetchAccountDetails(),
+        fetchTrialLimits()
       ]);
       setUsers(usersData);
       setAgents(agentsData);
+      setTrialLimits(limitsData);
     } catch (error) {
       toast({
         title: "Error",
@@ -268,6 +273,48 @@ const Admin = () => {
     }
   };
 
+  const handleTrialLimitsUpdate = async (newLimits: any) => {
+    try {
+      await updateTrialLimits(newLimits);
+      setTrialLimits(newLimits);
+      setIsTrialLimitsDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Trial limits updated successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update trial limits",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleWalletEdit = async (walletData: any) => {
+    try {
+      await updateUserWallet(selectedUser.id, walletData);
+      
+      // Reload users to reflect changes
+      const updatedUsers = await fetchUsers();
+      setUsers(updatedUsers);
+      setIsWalletEditDialogOpen(false);
+      setSelectedUser(null);
+      
+      toast({
+        title: "Success",
+        description: "User wallet updated successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user wallet",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getTierBadge = (tier: number) => {
     const tierColors = {
       1: 'bg-gray-500',
@@ -326,8 +373,16 @@ const Admin = () => {
       change: "+5%"
     },
     {
-      title: "Total Volume",
-      value: "$2.4M",
+      title: "Total Portfolio Value",
+      value: `$${users.reduce((sum, u) => {
+        const userTotal = (u.wallets?.USDC || 0) + 
+                         ((u.wallets?.BTC || 0) * 65000) + 
+                         ((u.wallets?.ETH || 0) * 3200) + 
+                         ((u.wallets?.BCH || 0) * 400) + 
+                         ((u.wallets?.BNB || 0) * 600) + 
+                         (u.wallets?.USDC_TOKEN || 0);
+        return sum + userTotal;
+      }, 0).toLocaleString()}`,
       icon: DollarSign,
       change: "+23%"
     }
@@ -427,6 +482,24 @@ const Admin = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            
+            <Dialog open={isTrialLimitsDialogOpen} onOpenChange={setIsTrialLimitsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Trial Limits
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Manage Trial Deposit Limits</DialogTitle>
+                </DialogHeader>
+                <TrialLimitsForm 
+                  initialData={trialLimits} 
+                  onSubmit={handleTrialLimitsUpdate}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -484,70 +557,89 @@ const Admin = () => {
                         <TableHead>Role</TableHead>
                         <TableHead>Tier</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>USDC Balance</TableHead>
+                        <TableHead>Total Portfolio</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.firstName} {user.lastName}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                              {user.role}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getTierBadge(user.tier || 1)}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              user.status === 'active' ? 'default' : 
-                              user.status === 'suspended' ? 'destructive' : 'secondary'
-                            }>
-                              {user.status || 'active'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>${user.wallets?.USDC || 0}</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setIsEditDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              {user.status !== 'suspended' ? (
+                      {users.map((user) => {
+                        const portfolioValue = (user.wallets?.USDC || 0) + 
+                                             ((user.wallets?.BTC || 0) * 65000) + 
+                                             ((user.wallets?.ETH || 0) * 3200) + 
+                                             ((user.wallets?.BCH || 0) * 400) + 
+                                             ((user.wallets?.BNB || 0) * 600) + 
+                                             (user.wallets?.USDC_TOKEN || 0);
+                        
+                        return (
+                          <TableRow key={user.id}>
+                            <TableCell>{user.firstName} {user.lastName}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                {user.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{getTierBadge(user.tier || 1)}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                user.status === 'active' ? 'default' : 
+                                user.status === 'suspended' ? 'destructive' : 'secondary'
+                              }>
+                                {user.status || 'active'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>${portfolioValue.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsWalletEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Wallet className="w-3 h-3" />
+                                </Button>
+                                {user.status !== 'suspended' ? (
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    onClick={() => handleToggleUserStatus(user.id, 'suspended')}
+                                  >
+                                    <Ban className="w-3 h-3" />
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    size="sm" 
+                                    variant="default"
+                                    onClick={() => handleToggleUserStatus(user.id, 'active')}
+                                  >
+                                    <UserCheck className="w-3 h-3" />
+                                  </Button>
+                                )}
                                 <Button 
                                   size="sm" 
                                   variant="destructive"
-                                  onClick={() => handleToggleUserStatus(user.id, 'suspended')}
+                                  onClick={() => handleDeleteUser(user.id)}
                                 >
-                                  <Ban className="w-3 h-3" />
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
-                              ) : (
-                                <Button 
-                                  size="sm" 
-                                  variant="default"
-                                  onClick={() => handleToggleUserStatus(user.id, 'active')}
-                                >
-                                  <UserCheck className="w-3 h-3" />
-                                </Button>
-                              )}
-                              <Button 
-                                size="sm" 
-                                variant="destructive"
-                                onClick={() => handleDeleteUser(user.id)}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -659,6 +751,21 @@ const Admin = () => {
               <AgentEditForm 
                 initialData={selectedAgent} 
                 onSubmit={handleAgentEdit}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Wallet Edit Dialog */}
+        <Dialog open={isWalletEditDialogOpen} onOpenChange={setIsWalletEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User Wallet</DialogTitle>
+            </DialogHeader>
+            {selectedUser && (
+              <WalletEditForm 
+                initialData={selectedUser.wallets || {}} 
+                onSubmit={handleWalletEdit}
               />
             )}
           </DialogContent>
@@ -841,6 +948,120 @@ const AgentEditForm = ({ initialData, onSubmit }: any) => {
 
       <Button type="submit" className="w-full">
         Update Agent Details
+      </Button>
+    </form>
+  );
+};
+
+const TrialLimitsForm = ({ initialData, onSubmit }: any) => {
+  const [limitsData, setLimitsData] = useState(initialData || {});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(limitsData);
+  };
+
+  const updateLimit = (trial: string, field: string, value: number) => {
+    setLimitsData({
+      ...limitsData,
+      [trial]: {
+        ...limitsData[trial],
+        [field]: value
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+        {Array.from({length: 12}, (_, i) => {
+          const trialKey = `trial${i + 1}`;
+          const trial = limitsData[trialKey] || { monthlyMin: 100, monthlyMax: 500 };
+          
+          return (
+            <Card key={trialKey} className="p-4">
+              <h4 className="font-medium mb-3">Trial {i + 1}</h4>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Monthly Minimum</Label>
+                  <Input
+                    type="number"
+                    value={trial.monthlyMin}
+                    onChange={(e) => updateLimit(trialKey, 'monthlyMin', parseInt(e.target.value))}
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Monthly Maximum</Label>
+                  <Input
+                    type="number"
+                    value={trial.monthlyMax}
+                    onChange={(e) => updateLimit(trialKey, 'monthlyMax', parseInt(e.target.value))}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      
+      <Button type="submit" className="w-full">
+        Update Trial Limits
+      </Button>
+    </form>
+  );
+};
+
+const WalletEditForm = ({ initialData, onSubmit }: any) => {
+  const [walletData, setWalletData] = useState({
+    USDC: initialData.USDC || 0,
+    BTC: initialData.BTC || 0,
+    ETH: initialData.ETH || 0,
+    BCH: initialData.BCH || 0,
+    BNB: initialData.BNB || 0,
+    USDC_TOKEN: initialData.USDC_TOKEN || 0
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(walletData);
+  };
+
+  const currencies = [
+    { key: 'USDC', label: 'USD Balance', icon: '💵' },
+    { key: 'BTC', label: 'Bitcoin', icon: '₿' },
+    { key: 'ETH', label: 'Ethereum', icon: 'Ξ' },
+    { key: 'BCH', label: 'Bitcoin Cash', icon: '🪙' },
+    { key: 'BNB', label: 'Binance Coin', icon: '🟡' },
+    { key: 'USDC_TOKEN', label: 'USDC Token', icon: '🔵' }
+  ];
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {currencies.map(currency => (
+          <div key={currency.key}>
+            <Label className="flex items-center space-x-2">
+              <span>{currency.icon}</span>
+              <span>{currency.label}</span>
+            </Label>
+            <Input
+              type="number"
+              step={currency.key === 'USDC' || currency.key === 'USDC_TOKEN' ? '0.01' : '0.000001'}
+              value={walletData[currency.key as keyof typeof walletData]}
+              onChange={(e) => setWalletData({
+                ...walletData,
+                [currency.key]: parseFloat(e.target.value) || 0
+              })}
+              placeholder={`Enter ${currency.label} amount`}
+            />
+          </div>
+        ))}
+      </div>
+      
+      <Button type="submit" className="w-full">
+        Update Wallet Balances
       </Button>
     </form>
   );

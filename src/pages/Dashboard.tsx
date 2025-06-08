@@ -1,17 +1,70 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, TrendingUp, DollarSign, Activity, Crown } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Wallet, TrendingUp, DollarSign, Activity, Crown, Target, Gift } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { fetchTrialLimits, getUserMonthlyDeposits } from "@/utils/jsonbin-api";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [trialLimits, setTrialLimits] = useState<any>({});
+  const [monthlyDeposits, setMonthlyDeposits] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
+
+  const loadDashboardData = async () => {
+    try {
+      const [limits, deposits] = await Promise.all([
+        fetchTrialLimits(),
+        getUserMonthlyDeposits(user?.id || '')
+      ]);
+      
+      setTrialLimits(limits);
+      setMonthlyDeposits(deposits);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!user) return null;
 
-  const totalBalance = user.wallets.USDC + (user.wallets.BTC * 65000) + (user.wallets.ETH * 3200);
+  // Expanded wallet with all supported cryptocurrencies
+  const expandedWallets = {
+    USD: user.wallets.USDC || 100, // Default welcome bonus
+    BTC: user.wallets.BTC || 0,
+    ETH: user.wallets.ETH || 0,
+    BCH: user.wallets.BCH || 0,
+    BNB: user.wallets.BNB || 0,
+    USDC: user.wallets.USDC_TOKEN || 0
+  };
+
+  // Current trial limits
+  const currentTrialKey = `trial${user.tier || 1}`;
+  const currentLimits = trialLimits[currentTrialKey] || { monthlyMin: 100, monthlyMax: 500 };
+  
+  // Calculate funding progress
+  const fundingProgress = (monthlyDeposits / currentLimits.monthlyMax) * 100;
+  const hasWelcomeBonus = expandedWallets.USD >= 100;
+
+  const totalBalance = 
+    expandedWallets.USD + 
+    (expandedWallets.BTC * 65000) + 
+    (expandedWallets.ETH * 3200) + 
+    (expandedWallets.BCH * 400) + 
+    (expandedWallets.BNB * 600) + 
+    expandedWallets.USDC;
 
   const getTierBadge = (tier: number) => {
     const tierConfig = {
@@ -40,32 +93,32 @@ const Dashboard = () => {
 
   const stats = [
     {
-      title: "Total Balance",
+      title: "Total Portfolio",
       value: `$${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
       change: "+2.5%",
       changeType: "positive" as const
     },
     {
-      title: "USDC Balance",
-      value: `$${user.wallets.USDC.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      title: "USD Balance",
+      value: `$${expandedWallets.USD.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       icon: Wallet,
-      change: "0%",
-      changeType: "neutral" as const
+      change: hasWelcomeBonus ? "Welcome Bonus!" : "0%",
+      changeType: hasWelcomeBonus ? "positive" : "neutral" as const
     },
     {
       title: "BTC Holdings",
-      value: `${user.wallets.BTC} BTC`,
+      value: `${expandedWallets.BTC.toFixed(6)} BTC`,
       icon: TrendingUp,
       change: "+5.2%",
       changeType: "positive" as const
     },
     {
-      title: "ETH Holdings",
-      value: `${user.wallets.ETH} ETH`,
+      title: "Monthly Deposits",
+      value: `$${monthlyDeposits.toLocaleString()}`,
       icon: Activity,
-      change: "+1.8%",
-      changeType: "positive" as const
+      change: `of $${currentLimits.monthlyMax.toLocaleString()} limit`,
+      changeType: "neutral" as const
     }
   ];
 
@@ -80,6 +133,49 @@ const Dashboard = () => {
           </div>
           <p className="text-muted-foreground">Here's what's happening with your trading account today.</p>
         </div>
+
+        {/* Welcome Bonus Alert */}
+        {hasWelcomeBonus && (
+          <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <Gift className="w-6 h-6 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-800 dark:text-green-200">🎉 Welcome Bonus Active!</h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">You have received a $100 welcome bonus in your USD wallet!</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Funding Progress */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Target className="w-5 h-5" />
+              <span>Monthly Funding Progress - Trial {user.tier || 1}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                <span>Deposited this month: ${monthlyDeposits.toLocaleString()}</span>
+                <span>Limit: ${currentLimits.monthlyMax.toLocaleString()}</span>
+              </div>
+              <Progress value={Math.min(fundingProgress, 100)} className="h-3" />
+              <div className="text-sm text-muted-foreground">
+                You've funded {Math.min(fundingProgress, 100).toFixed(1)}% of your monthly trial limit
+                {fundingProgress < 100 && (
+                  <span className="text-primary font-medium"> • ${(currentLimits.monthlyMax - monthlyDeposits).toLocaleString()} remaining</span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Trial {user.tier || 1} Range: ${currentLimits.monthlyMin.toLocaleString()} - ${currentLimits.monthlyMax.toLocaleString()} per month
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -96,60 +192,77 @@ const Dashboard = () => {
                   stat.changeType === 'neutral' ? 'text-muted-foreground' : 
                   'text-destructive'
                 }`}>
-                  {stat.change} from last month
+                  {stat.change}
                 </p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Recent Activity */}
+        {/* Expanded Wallets Overview */}
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
+              <CardTitle>Multi-Currency Wallet</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Welcome Bonus</p>
-                    <p className="text-sm text-muted-foreground">Initial deposit</p>
+              <div className="space-y-3">
+                {Object.entries(expandedWallets).map(([currency, balance]) => (
+                  <div key={currency} className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">
+                        {currency === 'USD' && '💵'}
+                        {currency === 'BTC' && '₿'}
+                        {currency === 'ETH' && 'Ξ'}
+                        {currency === 'BCH' && '🪙'}
+                        {currency === 'BNB' && '🟡'}
+                        {currency === 'USDC' && '🔵'}
+                      </span>
+                      <span className="font-medium">{currency}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {currency === 'USD' || currency === 'USDC' 
+                          ? `$${balance.toFixed(2)}`
+                          : `${balance.toFixed(6)} ${currency}`
+                        }
+                      </p>
+                      {currency !== 'USD' && currency !== 'USDC' && (
+                        <p className="text-xs text-muted-foreground">
+                          ≈ $
+                          {currency === 'BTC' && (balance * 65000).toFixed(2)}
+                          {currency === 'ETH' && (balance * 3200).toFixed(2)}
+                          {currency === 'BCH' && (balance * 400).toFixed(2)}
+                          {currency === 'BNB' && (balance * 600).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-success">+$100.00</p>
-                    <p className="text-sm text-muted-foreground">USDC</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Market Overview</CardTitle>
+              <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">BTC/USD</p>
-                    <p className="text-sm text-muted-foreground">Bitcoin</p>
+                {hasWelcomeBonus && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Welcome Bonus</p>
+                      <p className="text-sm text-muted-foreground">Initial account credit</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-success">+$100.00</p>
+                      <p className="text-sm text-muted-foreground">USD</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">$65,000</p>
-                    <p className="text-sm text-success">+2.5%</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">ETH/USD</p>
-                    <p className="text-sm text-muted-foreground">Ethereum</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">$3,200</p>
-                    <p className="text-sm text-success">+1.8%</p>
-                  </div>
+                )}
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">No recent transactions</p>
                 </div>
               </div>
             </CardContent>

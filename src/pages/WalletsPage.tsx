@@ -10,30 +10,55 @@ const WalletsPage = () => {
 
   if (!user) return null;
 
+  // Expanded wallet with all supported cryptocurrencies
   const wallets = [
     {
-      symbol: 'USDC',
-      name: 'USD Coin',
-      balance: user.wallets.USDC,
-      usdValue: user.wallets.USDC,
+      symbol: 'USD',
+      name: 'US Dollar',
+      balance: user.wallets.USDC || 100, // Default welcome bonus
+      usdValue: user.wallets.USDC || 100,
       change: 0,
       icon: '💵'
     },
     {
       symbol: 'BTC',
       name: 'Bitcoin',
-      balance: user.wallets.BTC,
-      usdValue: user.wallets.BTC * 65000,
+      balance: user.wallets.BTC || 0,
+      usdValue: (user.wallets.BTC || 0) * 65000,
       change: 2.5,
       icon: '₿'
     },
     {
       symbol: 'ETH',
       name: 'Ethereum',
-      balance: user.wallets.ETH,
-      usdValue: user.wallets.ETH * 3200,
+      balance: user.wallets.ETH || 0,
+      usdValue: (user.wallets.ETH || 0) * 3200,
       change: 1.8,
       icon: 'Ξ'
+    },
+    {
+      symbol: 'BCH',
+      name: 'Bitcoin Cash',
+      balance: user.wallets.BCH || 0,
+      usdValue: (user.wallets.BCH || 0) * 400,
+      change: -0.5,
+      icon: '🪙'
+    },
+    {
+      symbol: 'BNB',
+      name: 'Binance Coin',
+      balance: user.wallets.BNB || 0,
+      usdValue: (user.wallets.BNB || 0) * 600,
+      change: 3.2,
+      icon: '🟡'
+    },
+    {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      balance: user.wallets.USDC_TOKEN || 0,
+      usdValue: user.wallets.USDC_TOKEN || 0,
+      change: 0,
+      icon: '🔵'
     }
   ];
 
@@ -76,9 +101,10 @@ const WalletsPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {wallet.balance.toLocaleString(undefined, { 
-                    minimumFractionDigits: wallet.symbol === 'USDC' ? 2 : 6 
-                  })} {wallet.symbol}
+                  {wallet.symbol === 'USD' || wallet.symbol === 'USDC' 
+                    ? `$${wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    : `${wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 6 })} ${wallet.symbol}`
+                  }
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-sm text-muted-foreground">
