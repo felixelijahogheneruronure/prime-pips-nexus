@@ -10,7 +10,7 @@ const WalletsPage = () => {
 
   if (!user) return null;
 
-  // Expanded wallet with all supported cryptocurrencies - with safe fallbacks
+  // Expanded wallet with all supported cryptocurrencies
   const wallets = [
     {
       symbol: 'USD',
