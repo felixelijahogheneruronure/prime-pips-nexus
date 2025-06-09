@@ -14,6 +14,9 @@ interface User {
     USDC: number;
     BTC: number;
     ETH: number;
+    BCH: number;
+    BNB: number;
+    USDC_TOKEN: number;
   };
   createdAt: string;
 }
@@ -106,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Create new user
+      // Create new user with expanded wallet support
       const newUser = {
         id: `user-${Date.now()}`,
         email,
@@ -115,7 +118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: 'user' as const,
         tier: 1,
         status: 'active' as const,
-        wallets: { USDC: 100, BTC: 0, ETH: 0 }, // Welcome bonus
+        wallets: { 
+          USDC: 100, // Welcome bonus
+          BTC: 0, 
+          ETH: 0,
+          BCH: 0,
+          BNB: 0,
+          USDC_TOKEN: 0
+        },
         createdAt: new Date().toISOString(),
         passwordHash: hashPassword(password)
       };
