@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +39,7 @@ const Dashboard = () => {
 
   if (!user) return null;
 
-  // Expanded wallet with all supported cryptocurrencies
+  // Expanded wallet with all supported cryptocurrencies - with safe fallbacks
   const expandedWallets = {
     USD: user.wallets.USDC || 100, // Default welcome bonus
     BTC: user.wallets.BTC || 0,
